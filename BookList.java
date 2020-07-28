@@ -1,3 +1,4 @@
+
 package Group2.ClassLists;
 
 import Group2.Classes.Book;
@@ -18,7 +19,7 @@ import java.util.Vector;
 
 /**
  *
- * @author TranHoangLan
+ * @author TranVu
  */
 public class BookList extends Vector<Book>{
     
@@ -35,17 +36,17 @@ public class BookList extends Vector<Book>{
     }
     
     public void seat_reset(){
-        for (int i=0;i<10;i++)
-            for (int j=0;j<10;j++)
+        for (int i=0;i<100;i++)
+            for (int j=0;j<100;j++)
                 seat[i][j] = "0";
     }
     
-    public int addFromString(String s){
+    public int addFromString(String s, int row, int col){
         // String -> 1D -> 2D
         char[] array1D = s.toCharArray();
         int k=0, n = 0;
-        for (int i=0;i<10;i++)
-            for (int j=0;j<10;j++,k++)
+        for (int i=0;i<row;i++)
+            for (int j=0;j<col;j++,k++)
                 if(array1D[k] == '1'){
                     seat[i][j] = "1";
                     n++;
@@ -53,12 +54,12 @@ public class BookList extends Vector<Book>{
         return n;  // number of seats
     }
     
-    public void removeFromString(String s){
+    public void removeFromString(String s, int row, int col){
         // String -> 1D -> 2D
         char[] array1D = s.toCharArray();
         int k=0;
-        for (int i=0;i<10;i++)
-            for (int j=0;j<10;j++,k++)
+        for (int i=0;i<row;i++)
+            for (int j=0;j<col;j++,k++)
                 if(array1D[k] == '1'){
                     seat[i][j] = "1*";
                 }
@@ -112,9 +113,9 @@ public class BookList extends Vector<Book>{
         }
     }
     
-    public void seat_print(){
-        for (int i=0;i<10;i++){
-            for (int j=0;j<10;j++){
+    public void seat_print(int row, int col){
+        for (int i=0;i<row;i++){
+            for (int j=0;j<col;j++){
                 switch (seat[i][j]) {
                     case "1":
                         System.out.print(ANSI_RED_B + " 1 " + ANSI_RESET);
@@ -131,30 +132,30 @@ public class BookList extends Vector<Book>{
         }
     }
     
-    public String regSeat(int showid){
+    public String regSeat(int showid, int r, int c){
         this.seat_reset();
         this.stream().filter((book) -> (book.getShowid() == showid)).forEachOrdered((book) -> {
-            this.addFromString(book.getSeat());
+            this.addFromString(book.getSeat(),r,c);
         });
         
         // initialize array (make all 0 value)
-        char[] array_1D = new char[100];
-        for(int i=0;i<100;i++)
+        char[] array_1D = new char[r*c];
+        for(int i=0;i<r*c;i++)
             array_1D[i] = '0';
-        char[][] array_2D = new char[10][10];
-        for(int i=0;i<10;i++){
-            for(int j=0;j<10;j++)
-                array_2D[i][j] = '0';
+        char[][] array_2D = new char[r][c];
+        for(int i=0;i<r;i++){
+            for(int j=0;j<c;j++)
+                array_2D[r][c] = '0';
         }
         
         int row = -1, col = -1;
         boolean valid = true, next = true;
         do{
-            this.seat_print();
+            this.seat_print(r,c);
             System.out.println("Book a new seat");
             do{
-                row = Utility.getInt("Enter row number", 1, 10);
-                col = Utility.getInt("Enter column number", 1, 10);
+                row = Utility.getInt("Enter row number", 1, r);
+                col = Utility.getInt("Enter column number", 1, c);
                 if("1".equals(seat[row-1][col-1])){
                     valid = false;
                     System.out.println("This seat has been taken! Choose another seat!");
@@ -166,39 +167,38 @@ public class BookList extends Vector<Book>{
             next = Utility.getYesNo("Book another seat");
         }
         while(next == true);
-        this.seat_print();
+        this.seat_print(r,c);
         // 2D -> 1D -> string
         int tmp_int = 0;
-        for(int i=0;i<10;i++)
-            for(int j=0;j<10;j++){
+        for(int i=0;i<r;i++)
+            for(int j=0;j<c;j++){
                 array_1D[tmp_int] = array_2D[i][j];
                 tmp_int++;
             }
         return String.valueOf(array_1D);
     }
     
-    public void bookSeat(ShowList sl) throws IOException{
+    public void bookSeat(ShowList sl, RoomList rl) throws IOException{
         while(true){
             String date = Utility.getDate("Enter show date (dd/MM/yyyy)");
             boolean check = sl.getShowInfo(date);
             if(check == false) break;
             int showid = Utility.getInt("Enter show ID", 1, sl.maxID);
-            if(sl.check_showID(date, showid)==false){
-                System.out.println("Show does not exist!");
-                break;
-            }
             String name = Utility.getString("Enter customer’s name");
             System.out.println();
-            String seat = this.regSeat(showid);
-            int n = this.addFromString(seat);
+            int row = rl.get((sl.get(showid)).getRoomID()).getRow();
+            int column = rl.get((sl.get(showid)).getRoomID()).getCol();
+            String seat = this.regSeat(showid, row, column);
+            int n = this.addFromString(seat, row, column);
             Float amount = sl.getPrice(showid)*n;
+
             Book b = new Book((MAX_id+1), showid, name, seat, amount);
             this.add(b);
             break;
         }
     }
     
-    public void removeSeat(ShowList sl, BookList bl) throws IOException{
+    public void removeSeat(ShowList sl, BookList bl, RoomList rl) throws IOException{
         while(true){
             String date = Utility.getDate("Enter show date (dd/MM/yyyy)");
             boolean check = sl.getShowInfo(date);
@@ -206,57 +206,57 @@ public class BookList extends Vector<Book>{
             int showid = Utility.getInt("Enter show ID", 1, sl.maxID);
             System.out.println();
             book_display();
+            int r = rl.get((sl.get(showid)).getRoomID()).getRow();
+            int c = rl.get((sl.get(showid)).getRoomID()).getCol();
             int bookingid = Utility.getInt("Enter booking ID", 1, bl.MAX_id);
             this.seat_reset();
-        this.stream().filter((book) -> (book.getShowid() == showid)).forEachOrdered((book) -> {
-            this.addFromString(book.getSeat());
-        });
-        char[] array_1D = new char[100];
-        for(int i=0;i<100;i++)
-            array_1D[i] = '0';
-        char[][] array_2D = new char[10][10];
-        for(int i=0;i<10;i++){
-            for(int j=0;j<10;j++)
-                array_2D[i][j] = '0';
-        }
-            System.out.println();
-         int checkline=-1, bookingline=-1;
-            LineNumberReader reader = null;
-        try {
-         reader = new LineNumberReader(new FileReader(new File("data\\bookings.txt")));
-         while (checkline != bookingid)
-         {
-            checkline = new Scanner(reader.readLine()).useDelimiter("\\D+").nextInt();
-            bookingline++;
-         }
-        } catch (Exception ex) {
-        ex.printStackTrace();
-        } finally { 
-         if(reader != null){
-            try {
-               reader.close();
-            } catch (IOException e) {
-               e.printStackTrace();
+            this.stream().filter((book) -> (book.getShowid() == showid)).forEachOrdered((book) -> {
+                this.addFromString(book.getSeat(),r,c);
+            });
+            char[] array_1D = new char[r*c];
+            for(int i=0;i<r*c;i++)
+                array_1D[i] = '0';
+            char[][] array_2D = new char[r][c];
+            for(int i=0;i<r;i++){
+                for(int j=0;j<c;j++)
+                    array_2D[r][c] = '0';
             }
-         }
+                System.out.println();
+             int checkline=-1, bookingline=-1;
+                LineNumberReader reader = null;
+            try {
+             reader = new LineNumberReader(new FileReader(new File("data\\bookings.txt")));
+             while (checkline != bookingid)
+             {
+                checkline = new Scanner(reader.readLine()).useDelimiter("\\D+").nextInt();
+                bookingline++;
+             }
+            } catch (Exception ex) {
+            ex.printStackTrace();
+            } finally { 
+             if(reader != null){
+                try {
+                   reader.close();
+                } catch (IOException e) {
+                   e.printStackTrace();
+                }
+            }
         }
         FileInputStream fs= new FileInputStream("data\\bookings.txt");
         BufferedReader br = new BufferedReader(new InputStreamReader(fs));
         for(int i = 0; i < bookingline; ++i)
           br.readLine();
         String s = br.readLine();
-        fs.close();
-        br.close();
         String [] seats = s.split("\\s+");
-        this.removeFromString(seats[3]);
-            this.seat_print();
+        this.removeFromString(seats[3],r,c);
+            this.seat_print(r,c);
             this.remove(bookingline);
             this.book_display();
             this.seat_reset();
         this.stream().filter((book) -> (book.getShowid() == showid)).forEachOrdered((book) -> {
-            this.addFromString(book.getSeat());
+            this.addFromString(book.getSeat(),r,c);
         });
-            this.seat_print();
+            this.seat_print(r,c);
             break;
         }
     }
