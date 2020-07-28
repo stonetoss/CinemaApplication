@@ -1,0 +1,198 @@
+package Group2.ClassLists;
+
+import Group2.Classes.Show;
+import Group2.Classes.Film;
+import Group.Main.Utility;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Scanner;
+import java.util.StringTokenizer;
+import java.util.Vector;
+
+public class ShowList extends Vector<Show>{
+    
+    public static final String ANSI_RED_B = "\u001B[41m";
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_GREEN_B = "\u001B[42m";
+    
+    Scanner sc = new Scanner(System.in);
+    Utility u = new Utility();
+    int maxID = 0;
+    RoomList rl = new RoomList();
+    boolean[] time = new boolean[9];
+    
+    public ShowList(){
+        super();
+    }
+    
+    public void addFromFile(String fName) throws FileNotFoundException, IOException{
+        try{
+            File f = new File(fName);
+            if (!f.exists()) return;
+            FileReader fr = new FileReader(f);
+            BufferedReader bf = new BufferedReader(fr);
+            String details;
+            while((details = bf.readLine()) != null){
+                StringTokenizer stk = new StringTokenizer(details, "\t");
+                int showid = Integer.parseInt(stk.nextToken());
+                if (showid > maxID) maxID = showid;  // set max id
+                int filmid = Integer.parseInt(stk.nextToken());
+                int roomid = Integer.parseInt(stk.nextToken());
+                String date = stk.nextToken();
+                Float price = Float.parseFloat(stk.nextToken());
+                int slot = Integer.parseInt(stk.nextToken());
+                Show s = new Show(showid, filmid, roomid, date, price, slot);
+                this.add(s);
+            }
+            bf.close();
+            fr.close();
+        } catch(Exception e){
+            
+        }
+    }
+    
+    public void display(){
+        if (this.isEmpty()) {
+            System.out.println("Empty list!!");
+            return;
+        }
+        Collections.sort(this);
+        System.out.format("%-11s%-11s%-11s%-15s%-10s%-1s\n", "ShowID", "FilmID", "RoomID", "Show Date", "Price", "Slot");
+        this.forEach((i) -> {
+            i.print();
+        });
+    }
+        
+    public void saveToFile(String fName) {
+        if (this.isEmpty()) {
+            System.out.println("Empty list!!");
+            return;
+        }
+        try {
+            File f = new File(fName);
+            try (FileWriter fw = new FileWriter(f)) {
+                for (Show x : this) {
+                    fw.append(x.getShowID() + "\t" + x.getFilmID() + "\t" + x.getRoomID() + "\t" + x.getDate() + "\t" + x.getPrice() + "\t" + x.getSlot() + "\n");
+                }
+            }
+        } catch (IOException e) {
+            System.out.println(e);
+        }
+    }
+        
+    public void printTimeSlot(String date, int room){
+        for(int i=0;i<time.length;i++) time[i] = false;
+        this.stream().filter((x) -> (room == x.getRoomID())).forEachOrdered((x) -> {
+            time[x.getSlot()-1] = true;
+        });
+        
+        for (int i=0;i<time.length;i++){
+            if(time[i] == true)
+                System.out.print(ANSI_RED_B + " 1 " + ANSI_RESET);
+            else System.out.print(" 0 ");
+        }
+        System.out.println();
+    }
+    
+    public void addNewShow(FilmList fl) throws IOException{
+        
+        // display and enter film id
+        fl.display();
+        int newfid;
+        boolean valid = false;
+        do{
+            newfid = Utility.getInt("Enter film ID", 1, fl.MAX_fid);
+            for(Film x : fl){
+                if(x.getFilmID() == newfid){
+                    valid = true;
+                    break;
+                }
+            }
+            if(valid == false) System.out.println("Invalid filmID!!");
+        }
+        while(valid == false);
+        
+        // display and install room id
+        rl.addFromFile("data\\Rooms.txt");
+        rl.display();
+        int newrid = Utility.getInt("Enter room ID", 1, 3);
+        String date = Utility.getDate("Enter show date (dd/MM/yyyy)");
+        Float price = Utility.getFloat("Enter price", 0, Integer.MAX_VALUE);
+        
+        // display time slot
+        this.printTimeSlot(date, newrid);
+        int new_time;
+        
+        // enter time slot
+        valid = false;
+        do{
+            new_time = Utility.getInt("Enter time slot (from 1 to 9)", 1, 9);
+                if(!time[new_time-1]){
+                    valid = true;
+                    break;
+                }
+            if(!valid) System.out.println("Slot Taken!!");
+        }
+        while(!valid);
+        
+        // append new show
+        Show s = new Show((maxID + 1), newfid, newrid, date, price, new_time);
+        this.add(s);
+        this.saveToFile("data\\Shows.txt");
+        
+    }
+    
+    public Float getPrice(int showid) throws IOException{
+        Float price = null;
+        File f = new File("data\\Shows.txt");
+        FileReader fr = new FileReader(f);
+        BufferedReader bf = new BufferedReader(fr);
+        String details, tmp;
+        while((details = bf.readLine()) != null){
+            StringTokenizer stk = new StringTokenizer(details, "\t");
+            int tmp_showid = Integer.parseInt(stk.nextToken());  // show id
+            tmp = stk.nextToken();  // film id
+            tmp = stk.nextToken();  // room id
+            tmp = stk.nextToken();  // date
+            Float tmp_price = Float.parseFloat(stk.nextToken());  // price
+            if (showid == tmp_showid) price = tmp_price;
+        }
+        return price;
+    }
+    public boolean check_showID(String date, int showID){
+        for(Show sl: this){
+            if(sl.getShowID()==showID){
+                if(sl.getDate().equals(date)) return true;
+            }
+        }
+        return false;
+    }
+    
+    public boolean getShowInfo(String date){
+        if (this.isEmpty()) {
+            System.out.println("Empty list!!");
+            return false;
+        }
+        int count = 0;
+        count = this.stream().filter((i) -> (i.getDate().equals(date))).map((_item) -> 1).reduce(count, Integer::sum);
+        
+        if (count == 0){
+            System.out.println("\nThere's no show in this date!!");
+            return false;
+        }
+        
+        System.out.println("\nList of shows:");
+        System.out.format("%-11s%-11s%-11s%-15s%-10s%-1s\n", "ShowID", "FilmID", "RoomID", "Show Date", "Price", "Slot");
+        
+        this.stream().filter((i) -> (i.getDate().equals(date))).forEachOrdered((i) -> {
+            i.print();
+        });
+        return true;
+    }
+    
+}
